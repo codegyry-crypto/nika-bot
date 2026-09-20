@@ -18,6 +18,7 @@ Features:
 
 import os
 import sys
+import time
 import re
 import io
 import json
@@ -1050,7 +1051,19 @@ def main():
         )
         bot.reply_to(message, reply)
 
-    bot.infinity_polling(timeout=20, long_polling_timeout=20)
+    try:
+        bot.remove_webhook()
+        print("[Telegram] Webhook successfully removed, switching to polling mode.")
+    except Exception as e:
+        print(f"[Telegram] remove_webhook notice: {e}", file=sys.stderr)
+
+    print("[Telegram] Starting infinity polling...")
+    while True:
+        try:
+            bot.infinity_polling(timeout=20, long_polling_timeout=20)
+        except Exception as e:
+            print(f"[Telegram Polling Error]: {e}", file=sys.stderr)
+            time.sleep(3)
 
 
 if __name__ == "__main__":
