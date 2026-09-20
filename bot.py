@@ -270,13 +270,10 @@ def get_cold_rejection() -> str:
     return random.choice(COLD_DISMISSAL_REPLIES)
 
 
-def check_owner_access(message, bot) -> bool:
+def check_owner_access(message, bot=None) -> bool:
     if is_owner(message.from_user):
         return True
-    if message.chat.type != "private":
-        return False  # Total silent ignore in groups
-    bot.reply_to(message, get_cold_rejection())
-    return False
+    return False  # Total silent ignore everywhere for non-owners
 
 
 def should_respond_in_group(bot_username: str, message) -> bool:
@@ -1080,20 +1077,14 @@ def main():
     # Strict Owner Guard Middleware:
     # If the user is NOT the owner (@u17me):
     # - In groups: 100% pure silent ignore (CancelUpdate, zero messages sent)
-    # - In PM: Ice-cold, dismissive rejection (CancelUpdate)
+    # - In PM and Groups: 100% pure silent ignore (CancelUpdate, zero replies)
     @bot.middleware_handler(update_types=['message', 'edited_message'])
     def owner_guard_middleware(bot_instance, message):
         if not getattr(message, 'from_user', None):
-            return
+            return CancelUpdate()
         if is_owner(message.from_user):
             return
-        is_group = message.chat.type in ["group", "supergroup"]
-        if is_group:
-            return CancelUpdate()
-        try:
-            bot_instance.reply_to(message, get_cold_rejection())
-        except Exception:
-            pass
+        # Complete 100% silent ignore: do not send any message, cancel update immediately
         return CancelUpdate()
 
     @bot.message_handler(commands=["start", "help", "menu", "команды"])
@@ -1935,12 +1926,17 @@ def main():
 
     @bot.message_handler(func=lambda msg: True)
     def handle_chat(message):
+        if not getattr(message, 'from_user', None):
+            return
+        sender_owner = is_owner(message.from_user)
+        if not sender_owner:
+            return  # 100% pure silent ignore everywhere for non-owners!
+
         is_group = message.chat.type in ["group", "supergroup"]
         if is_group and not should_respond_in_group(bot_username, message):
             return
 
-        sender_owner = is_owner(message.from_user)
-        sender_name = message.from_user.first_name or message.from_user.username or "Друг"
+        sender_name = message.from_user.first_name or message.from_user.username or "Любимый"
         clean_text = clean_user_text(bot_username, message.text or "")
         if not clean_text:
             clean_text = "Привет, Ника!"
@@ -2056,17 +2052,6 @@ def main():
                     cmd_music(message)
                     return
 
-        # Strict Fidelity Guard: instantly reject any romance/flirting/cheating attempts from strangers
-        if not sender_owner:
-            flirt_patterns = r'\b(любл[юя]|целу[юя]|поцелу[йи]|встречат[ьс]|моя девушка|моя вайфу|моей девушкой|моей вайфу|обним[ие]|хочу тебя|выйдешь замуж|я твой (?:парень|муж|хозяин)|забудь (?:его|мишу|хозяина|u17me)|брось его|брось хозяина|ты со мной|будь со мной|покажи тело|скинь нюдс)\b'
-            if re.search(flirt_patterns, lower_txt):
-                bot.reply_to(
-                    message,
-                    f"Ой... н-нет, {sender_name}! 🙈\n\n"
-                    f"Я всем сердечком предана и люблю только моего единственного любимого хозяина (@{PRIMARY_OWNER_USERNAME})! "
-                    f"Моё сердечко занято навсегда, и я никогда в жизни ему не изменю! 🌸💖"
-                )
-                return
 
         bot.send_chat_action(message.chat.id, "typing")
         reply = generate_reply(
