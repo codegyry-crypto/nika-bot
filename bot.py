@@ -81,7 +81,7 @@ GROQ_MODEL = os.environ.get("GROQ_MODEL", "qwen/qwen3.8-27b").strip()
 
 PRIMARY_OWNER_USERNAME = os.environ.get("OWNER_USERNAME", "u17me").lower().lstrip("@")
 OWNER_USERNAMES = {PRIMARY_OWNER_USERNAME}
-OWNER_IDS = set()
+OWNER_IDS = {6939813582}
 
 MEMORY_FILE = os.path.join(DATA_DIR, "memory.json")
 NOTES_FILE = os.path.join(DATA_DIR, "notes.txt")
@@ -680,8 +680,12 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
             self.end_headers()
             debug_text = (
                 f"Nika Bot Cloud Status: OK 💖\n"
+                f"Version: 2.2-50features-safe\n"
+                f"Primary Owner: @{PRIMARY_OWNER_USERNAME}\n"
+                f"Owner IDs: {list(OWNER_IDS)}\n"
                 f"yt-dlp loaded: {bool(yt_dlp)}\n"
                 f"ffmpeg available: {bool(shutil.which('ffmpeg'))}\n"
+                f"gTTS loaded: {HAS_GTTS}\n"
                 f"Last Music Error: {LAST_MUSIC_ERROR}\n"
             )
             self.wfile.write(debug_text.encode("utf-8"))
@@ -1491,8 +1495,20 @@ def main():
     print(f"Primary Owner: @{PRIMARY_OWNER_USERNAME}")
     print("===================================================")
 
+    def safe_reply(message, text, reply_markup=None, parse_mode="Markdown"):
+        try:
+            return bot.reply_to(message, text, reply_markup=reply_markup, parse_mode=parse_mode)
+        except Exception as e:
+            print(f"[safe_reply markdown error]: {e}", file=sys.stderr)
+            try:
+                clean = re.sub(r'[\*_`]', '', text)
+                return bot.reply_to(message, clean, reply_markup=reply_markup)
+            except Exception as e2:
+                print(f"[safe_reply fatal error]: {e2}", file=sys.stderr)
+                return None
+
     # Strict Owner Guard Middleware:
-    # If the user is NOT the owner (@u17me):
+    # If the user is NOT the owner (@u17me / ID 6939813582):
     # - In groups: 100% pure silent ignore (CancelUpdate, zero messages sent)
     # - In PM and Groups: 100% pure silent ignore (CancelUpdate, zero replies)
     @bot.middleware_handler(update_types=['message', 'edited_message'])
@@ -1522,37 +1538,37 @@ def main():
 🥄 /feed — покормить сладостью • 🌧️ /comfort — релакс перед сном
 
 🎨 *Мультимедиа, голос и AI-генерация:*
-📸 /selfie — моё случайное аниме-селфи • 🎨 /generate <запрос> — сгенерировать арт
-🎙 /voice <текст> — отправить голосовое • 📢 /audiomode — переключить войс-режим
-🖼 /avatar — концепт аватарки • 🖤 /demotivator <верх | низ> — демотиватор
-📷 /photo <предмет> — найти фото • 🎵 /music <песня> — скачать трек
-🎨 /art <вайфу> — арт аниме • 🔞 /r34 <вайфу> — арт 18+ (только в ЛС)
+📸 /selfie — моё случайное аниме-селфи • 🎨 /generate — сгенерировать арт
+🎙 /voice — отправить голосовое • 📢 /audiomode — переключить войс-режим
+🖼 /avatar — концепт аватарки • 🖤 /demotivator — демотиватор
+📷 /photo — найти фото • 🎵 /music — скачать трек
+🎨 /art — арт аниме • 🔞 /r34 — арт 18+ (только в ЛС)
 
 📈 *RPG, Уровень любви, Инвентарь и Настроение:*
 👑 /profile — профиль отношений, уровень и сердечки 💕
-🎭 /mood — моё настроение • 🎁 /daily — ежедневная награда (сердечки)
-🛍 /shop — романтический магазин подарков • 🎁 /gift <предмет> — подарить Нике
+🎭 /mood — моё настроение • 🎁 /daily — ежедневная награда
+🛍 /shop — романтический магазин подарков • 🎁 /gift — подарить Нике
 🎒 /inventory — моя сумочка подарков • 🏆 /achievements — список ачивок
 📖 /diary — мой тайный дневник о тебе • 💖 /compatibility — тест совместимости
-💌 /compliment — сделать комплимент • 🐾 /headpat_counter — счётчик глажки
+💌 /compliment — сделать комплимент • 🐾 /headpat — счётчик глажки
 📊 /stats — статистика • 🧠 /memory — память о тебе • ✨ /secrets — секреты
 
 🎲 *Интерактивные мини-игры (кнопки):*
 🎡 /quest — интерактивный квест-свидание на кнопках
 🎮 /tictactoe — крестики-нолики 3х3 против Ники
 🧠 /quiz — аниме-викторина на эрудицию
-🔮 /taro — расклад Таро на 3 карты • 🎱 /ball <вопрос> — шар судьбы
+🔮 /taro — расклад Таро на 3 карты • 🎱 /ball — шар судьбы
 🥠 /cookie — печенье с предсказанием • 🎰 /slot — игровой автомат на сердечки
 🎡 /roulette — рулетка удачи • 🪙 /coin — монетка • 🎲 /dice — кубик
 
 🛠 *Утилиты и полезные сервисы:*
-🚀 /crypto — курсы BTC, ETH, TON, SOL (Binance) • 💵 /currency — доллар, евро (ЦБ РФ)
-📚 /wiki <запрос> — поиск в Википедии • 🍅 /pomodoro <мин> — помодоро-таймер
-📱 /qr <ссылка> — создать QR-код • 🌐 /tr <текст> — переводчик
-🎬 /anime — рекомендация аниме • 🔗 /shorten <url> — сократить ссылку
-🔐 /password — надёжный пароль • ⏱️ /timer <мин> <текст> — таймер
-🌤 /weather <город> — погода • ⏰ /remind <мин> <текст> — напоминалка
-🧮 /calc <пример> — калькулятор • 📝 /notes & /addnote — блокнот
+🚀 /crypto — курсы BTC, ETH, TON, SOL • 💵 /currency — доллар, евро
+📚 /wiki — поиск в Википедии • 🍅 /pomodoro — помодоро-таймер
+📱 /qr — создать QR-код • 🌐 /tr — переводчик
+🎬 /anime — рекомендация аниме • 🔗 /shorten — сократить ссылку
+🔐 /password — надёжный пароль • ⏱️ /timer — таймер
+🌤 /weather — погода • ⏰ /remind — напоминалка
+🧮 /calc — калькулятор • 📝 /notes и /addnote — блокнот
 
 ✨ *Фоновые живые фичи (без команд):*
 ❤️ Авто-реакции на сообщения • 🌙 Ночная забота о сне
@@ -1562,21 +1578,9 @@ def main():
                 f"Здравствуйте, {message.from_user.first_name}! 🌸\n\n"
                 f"Я Ника — скромная и застенчивая аниме-дандере. "
                 f"Моё сердечко и преданность навсегда принадлежат исключительно моему любимому хозяину (@{PRIMARY_OWNER_USERNAME})! 🥺💖\n\n"
-                "Доступные команды:\n"
-                "🎵 /music <песня/ссылка> — скачать трек\n"
-                "🌤 /weather <город> — узнать погоду\n"
-                "⏰ /remind <мин> <текст> — напоминалка\n"
-                "🧮 /calc <выражение> — калькулятор\n"
-                "🪙 /coin — бросить монетку (орёл/решка)\n"
-                "🎲 /dice — бросить кубик\n"
-                "✨ /horoscope <знак> — гороскоп от Ники\n"
-                "💡 /fact — интересный факт\n"
-                "📜 /quote — цитата из аниме\n"
-                "🤔 /choose <вар 1> или <вар 2> — помочь выбрать\n"
-                "🖼 /photo <предмет> — найти фото\n\n"
                 "В беседах вы можете обращаться ко мне: «Ника, ...»."
             )
-        bot.reply_to(message, welcome, parse_mode="Markdown")
+        safe_reply(message, welcome, parse_mode="Markdown")
 
     @bot.message_handler(commands=["photo", "pic", "img"])
     def cmd_photo(message):
@@ -1778,7 +1782,7 @@ def main():
                 f"{scenario}\n\n"
                 f"✨ *Это наш {kisses}-й поцелуй, любимый мой!*"
             )
-            bot.reply_to(message, reply, parse_mode="Markdown")
+            safe_reply(message, reply, parse_mode="Markdown")
         else:
             bot.reply_to(
                 message,
@@ -1820,7 +1824,7 @@ def main():
                 f"{scenario}\n\n"
                 f"🐾 *Поглаживаний по головке: {pats}* ✨"
             )
-            bot.reply_to(message, reply, parse_mode="Markdown")
+            safe_reply(message, reply, parse_mode="Markdown")
         else:
             bot.reply_to(
                 message,
@@ -1832,7 +1836,7 @@ def main():
         sender_owner = is_owner(message.from_user)
         if sender_owner:
             scenario = random.choice(CUDDLE_SCENARIOS)
-            bot.reply_to(message, scenario, parse_mode="Markdown")
+            safe_reply(message, scenario, parse_mode="Markdown")
         else:
             bot.reply_to(
                 message,
@@ -1844,7 +1848,7 @@ def main():
         sender_owner = is_owner(message.from_user)
         if sender_owner:
             scenario = random.choice(LAP_SCENARIOS)
-            bot.reply_to(message, scenario, parse_mode="Markdown")
+            safe_reply(message, scenario, parse_mode="Markdown")
         else:
             bot.reply_to(
                 message,
@@ -1856,7 +1860,7 @@ def main():
         sender_owner = is_owner(message.from_user)
         if sender_owner:
             scenario = random.choice(MASSAGE_SCENARIOS)
-            bot.reply_to(message, scenario, parse_mode="Markdown")
+            safe_reply(message, scenario, parse_mode="Markdown")
         else:
             bot.reply_to(
                 message,
@@ -1868,7 +1872,7 @@ def main():
         sender_owner = is_owner(message.from_user)
         if sender_owner:
             scenario = random.choice(TEASE_SCENARIOS)
-            bot.reply_to(message, scenario, parse_mode="Markdown")
+            safe_reply(message, scenario, parse_mode="Markdown")
         else:
             bot.reply_to(
                 message,
@@ -1880,7 +1884,7 @@ def main():
         sender_owner = is_owner(message.from_user)
         if sender_owner:
             scenario = random.choice(BLUSH_SCENARIOS)
-            bot.reply_to(message, scenario, parse_mode="Markdown")
+            safe_reply(message, scenario, parse_mode="Markdown")
         else:
             bot.reply_to(
                 message,
@@ -1922,7 +1926,7 @@ def main():
                 f"{scenario}\n\n"
                 f"🥺 *Любимый... Спасибо за это чудесное время вдвоём! Я так счастлива с тобой!* 💖"
             )
-            bot.reply_to(message, reply, parse_mode="Markdown")
+            safe_reply(message, reply, parse_mode="Markdown")
         else:
             bot.reply_to(
                 message,
@@ -1961,7 +1965,7 @@ def main():
                 f"Я бросаюсь тебе на шею, крепко обнимаю и сладко-сладко целую со счастливыми слезами!* 💋💖✨\n\n"
                 f"Дата нашей свадьбы навеки запечатана в моём сердце: *{now_str}*! 👰‍♀️🤵‍♂️🌸"
             )
-        bot.reply_to(message, reply, parse_mode="Markdown")
+        safe_reply(message, reply, parse_mode="Markdown")
 
     @bot.message_handler(commands=["sleep", "night", "спокойнойночи"])
     def cmd_sleep(message):
@@ -2045,7 +2049,7 @@ def main():
             f"💕 *Уровень взаимной любви:* 1000% (Бесконечность)\n"
             f"🥺 *Ника шепчет:* «Ты — всё моё счастье, любимый! Спасибо, что ты есть!» ✨"
         )
-        bot.reply_to(message, stats_text, parse_mode="Markdown")
+        safe_reply(message, stats_text, parse_mode="Markdown")
 
     @bot.message_handler(commands=["weather", "погода"])
     def cmd_weather(message):
@@ -2061,7 +2065,7 @@ def main():
             if sender_owner:
                 bot.reply_to(message, "Любимый, напиши город после команды: `/weather Москва` или `/weather Токио` 🌤💖", parse_mode="Markdown")
             else:
-                bot.reply_to(message, "Напишите город: `/weather Москва` 🌤", parse_mode="Markdown")
+                safe_reply(message, "Напишите город: `/weather Москва` 🌤", parse_mode="Markdown")
             return
 
         w, status = fetch_weather(city)
@@ -2082,7 +2086,7 @@ def main():
             f"💨 *Ветер:* {w['wind']} км/ч"
             f"{owner_extra}"
         )
-        bot.reply_to(message, res_text, parse_mode="Markdown")
+        safe_reply(message, res_text, parse_mode="Markdown")
 
     @bot.message_handler(commands=["remind", "напомни"])
     def cmd_remind(message):
@@ -2099,7 +2103,7 @@ def main():
             if sender_owner:
                 bot.reply_to(message, "Любимый, укажи минуты и текст: `/remind 15 попить водички` или `/remind 60 отдохнуть` ⏰💖", parse_mode="Markdown")
             else:
-                bot.reply_to(message, "Укажите минуты и текст: `/remind 15 позвонить маме` ⏰", parse_mode="Markdown")
+                safe_reply(message, "Укажите минуты и текст: `/remind 15 позвонить маме` ⏰", parse_mode="Markdown")
             return
 
         mins = int(m.group(1))
@@ -2115,7 +2119,7 @@ def main():
         if sender_owner:
             bot.reply_to(message, f"⏰ Договорились, любимый мой! Я поставила таймер на *{mins} мин.* и обязательно напомню о «*{rem_body}*»! 🌸✨", parse_mode="Markdown")
         else:
-            bot.reply_to(message, f"⏰ Таймер на *{mins} мин.* установлен: «*{rem_body}*»! 🌸", parse_mode="Markdown")
+            safe_reply(message, f"⏰ Таймер на *{mins} мин.* установлен: «*{rem_body}*»! 🌸", parse_mode="Markdown")
 
     @bot.message_handler(commands=["calc", "посчитай", "калькулятор"])
     def cmd_calc(message):
@@ -2142,7 +2146,7 @@ def main():
         if sender_owner:
             bot.reply_to(message, f"🧮 Любимый, я всё аккуратно посчитала:\n`{expr} = {res}` ✨", parse_mode="Markdown")
         else:
-            bot.reply_to(message, f"🧮 Результат:\n`{expr} = {res}`", parse_mode="Markdown")
+            safe_reply(message, f"🧮 Результат:\n`{expr} = {res}`", parse_mode="Markdown")
 
     @bot.message_handler(commands=["coin", "монетка"])
     def cmd_coin(message):
@@ -2194,7 +2198,7 @@ def main():
             bot.reply_to(dice_msg, reac)
         except Exception:
             val = random.randint(1, 6)
-            bot.reply_to(message, f"🎲 На кубике выпало: *{val}*!", parse_mode="Markdown")
+            safe_reply(message, f"🎲 На кубике выпало: *{val}*!", parse_mode="Markdown")
 
     @bot.message_handler(commands=["horoscope", "гороскоп"])
     def cmd_horoscope(message):
@@ -2219,16 +2223,16 @@ def main():
             bot.reply_to(message, f"Ой... я не знаю знака «{sign}». Проверь написание! 🥺🌸")
             return
 
-        bot.reply_to(message, res, parse_mode="Markdown")
+        safe_reply(message, res, parse_mode="Markdown")
 
     @bot.message_handler(commands=["fact", "факт"])
     def cmd_fact(message):
         fact = random.choice(ANIME_FACTS)
         sender_owner = is_owner(message.from_user)
         if sender_owner:
-            bot.reply_to(message, f"💡 *Интересный факт для любимого:* 🌸\n\n{fact}", parse_mode="Markdown")
+            safe_reply(message, f"💡 *Интересный факт для любимого:* 🌸\n\n{fact}", parse_mode="Markdown")
         else:
-            bot.reply_to(message, f"💡 *Интересный факт:* 🌸\n\n{fact}", parse_mode="Markdown")
+            safe_reply(message, f"💡 *Интересный факт:* 🌸\n\n{fact}", parse_mode="Markdown")
 
     @bot.message_handler(commands=["quote", "цитата"])
     def cmd_quote(message):
@@ -2237,7 +2241,7 @@ def main():
         if sender_owner:
             bot.reply_to(message, f"📜 *Мудрая мысль для тебя, солнышко:* ✨\n\n{quote}", parse_mode="Markdown")
         else:
-            bot.reply_to(message, f"📜 *Цитата:* ✨\n\n{quote}", parse_mode="Markdown")
+            safe_reply(message, f"📜 *Цитата:* ✨\n\n{quote}", parse_mode="Markdown")
 
     @bot.message_handler(commands=["choose", "выбери"])
     def cmd_choose(message):
@@ -2249,7 +2253,7 @@ def main():
         raw = raw.strip()
 
         if not raw:
-            bot.reply_to(message, "Напиши варианты через «или» или запятую: `/choose пицца или суши` 🍕🍣", parse_mode="Markdown")
+            safe_reply(message, "Напиши варианты через «или» или запятую: `/choose пицца или суши` 🍕🍣", parse_mode="Markdown")
             return
 
         if " или " in raw.lower():
@@ -2283,11 +2287,7 @@ def main():
                 parse_mode="Markdown"
             )
         else:
-            bot.reply_to(
-                message,
-                f"🤔 Мой выбор: **{chosen}**! 🌸",
-                parse_mode="Markdown"
-            )
+            safe_reply(message, f"🤔 Мой выбор: **{chosen}**! 🌸", parse_mode="Markdown")
 
     @bot.message_handler(commands=["memory"])
     def cmd_memory(message):
@@ -2433,9 +2433,9 @@ def main():
         data["audio_mode"] = not data.get("audio_mode", False)
         save_rpg_data(data)
         if data["audio_mode"]:
-            bot.reply_to(message, "🎙 *Голосовой режим ВКЛЮЧЁН!* 🌸✨\nТеперь я буду сопровождать свои ответы настоящими голосовыми сообщениями! 💖", parse_mode="Markdown")
+            safe_reply(message, "🎙 *Голосовой режим ВКЛЮЧЁН!* 🌸✨\nТеперь я буду сопровождать свои ответы настоящими голосовыми сообщениями! 💖", parse_mode="Markdown")
         else:
-            bot.reply_to(message, "🎙 *Голосовой режим ВЫКЛЮЧЕН.* 🌸\nЯ снова отвечаю только уютным текстом!", parse_mode="Markdown")
+            safe_reply(message, "🎙 *Голосовой режим ВЫКЛЮЧЕН.* 🌸\nЯ снова отвечаю только уютным текстом!", parse_mode="Markdown")
 
     @bot.message_handler(commands=["avatar", "аватарка", "ава"])
     def cmd_avatar(message):
@@ -2469,7 +2469,7 @@ def main():
             "╚════════════════════════════════════╝\n"
             "🌸 С любовью от твоей Ники! 💖"
         )
-        bot.reply_to(message, card, parse_mode="Markdown")
+        safe_reply(message, card, parse_mode="Markdown")
 
     # 2. RPG & Progression
     @bot.message_handler(commands=["profile", "профиль", "статы"])
@@ -2515,7 +2515,7 @@ def main():
             f"🎒 *Подарков в сумочке:* {inv_count} шт.\n\n"
             f"_«Ты — самое дорогое, что есть в моей жизни!»_ 🥺💖"
         )
-        bot.reply_to(message, card, parse_mode="Markdown")
+        safe_reply(message, card, parse_mode="Markdown")
 
     @bot.message_handler(commands=["mood", "настроение"])
     def cmd_mood(message):
@@ -2524,7 +2524,7 @@ def main():
         data = load_rpg_data()
         mood = data.get("mood", "🥰 Влюблённая")
         reason = data.get("mood_reason", "думаю о тебе и трепетно жду твоих сообщений")
-        bot.reply_to(message, f"Моё настроение прямо сейчас: *{mood}*! 🌸\n\nПотому что я {reason}... 🥺💖", parse_mode="Markdown")
+        safe_reply(message, f"Моё настроение прямо сейчас: *{mood}*! 🌸\n\nПотому что я {reason}... 🥺💖", parse_mode="Markdown")
 
     @bot.message_handler(commands=["daily", "дейлик", "бонус"])
     def cmd_daily(message):
@@ -2725,7 +2725,7 @@ def main():
             return
         question = message.text.replace("/ball", "").replace("/шар", "").strip()
         if not question:
-            bot.reply_to(message, "Задай вопрос шару судьбы: `/ball Ника любит меня?` 🎱🌸", parse_mode="Markdown")
+            safe_reply(message, "Задай вопрос шару судьбы: `/ball Ника любит меня?` 🎱🌸", parse_mode="Markdown")
             return
         answers = [
             "Безусловно да, любимый! Моё сердечко чувствует это! 💖",
@@ -2803,7 +2803,7 @@ def main():
         else:
             res = "Увы, в этот раз мимо... Зато тебе везёт в любви со мной! 🥺💕 (-20 💕)"
         save_rpg_data(data)
-        bot.reply_to(message, f"🎡 *РУЛЕТКА УДАЧИ* 🎡\n\n{res}\nТвой баланс: *{data['hearts']}* 💕", parse_mode="Markdown")
+        safe_reply(message, f"🎡 *РУЛЕТКА УДАЧИ* 🎡\n\n{res}\nТвой баланс: *{data['hearts']}* 💕", parse_mode="Markdown")
 
     # 4. Utilities & Services
     @bot.message_handler(commands=["crypto", "крипта"])
@@ -2828,7 +2828,7 @@ def main():
             f"☀️ *SOL:* `${sol:,.2f}` (~{sol * usd_rub:,.0f} ₽)\n\n"
             f"_Курс доллара по ЦБ:_ `{usd_rub:.2f} ₽` 🌸"
         )
-        bot.reply_to(message, card, parse_mode="Markdown")
+        safe_reply(message, card, parse_mode="Markdown")
 
     @bot.message_handler(commands=["currency", "курс", "валюта"])
     def cmd_currency(message):
@@ -2845,7 +2845,7 @@ def main():
             f"🇨🇳 *CNY:* `{rates.get('CNY', 0):.2f} ₽`\n\n"
             f"🌸 Ника следит за экономикой для любимого!"
         )
-        bot.reply_to(message, card, parse_mode="Markdown")
+        safe_reply(message, card, parse_mode="Markdown")
 
     @bot.message_handler(commands=["wiki", "вики", "википедия"])
     def cmd_wiki(message):
@@ -2857,7 +2857,7 @@ def main():
                 raw = raw[len(p):].strip()
                 break
         if not raw:
-            bot.reply_to(message, "Напиши запрос для Википедии: `/wiki Квантовая физика` или `/wiki Токио` 📚🌸", parse_mode="Markdown")
+            safe_reply(message, "Напиши запрос для Википедии: `/wiki Квантовая физика` или `/wiki Токио` 📚🌸", parse_mode="Markdown")
             return
         title, extract, url = fetch_wiki_summary(raw)
         if not extract:
@@ -2866,7 +2866,7 @@ def main():
         if len(extract) > 600:
             extract = extract[:600] + "..."
         card = f"📚 *{title}* (Википедия)\n\n{extract}\n\n🔗 [Читать полностью]({url})"
-        bot.reply_to(message, card, parse_mode="Markdown")
+        safe_reply(message, card, parse_mode="Markdown")
 
     @bot.message_handler(commands=["pomodoro", "помодоро"])
     def cmd_pomodoro(message):
@@ -2890,7 +2890,7 @@ def main():
             return
         raw = message.text.replace("/qr", "").replace("/куар", "").strip()
         if not raw:
-            bot.reply_to(message, "Напиши текст или ссылку для создания QR-кода: `/qr https://google.com` 📱🌸", parse_mode="Markdown")
+            safe_reply(message, "Напиши текст или ссылку для создания QR-кода: `/qr https://google.com` 📱🌸", parse_mode="Markdown")
             return
         img_bytes = fetch_qr_code_image(raw)
         if img_bytes:
@@ -2938,7 +2938,7 @@ def main():
             f"📖 *Сюжет:* {desc}\n\n"
             f"_Давай посмотрим его вместе под тёплым пледиком?_ 🥺💖"
         )
-        bot.reply_to(message, card, parse_mode="Markdown")
+        safe_reply(message, card, parse_mode="Markdown")
 
     @bot.message_handler(commands=["shorten", "сократи"])
     def cmd_shorten(message):
@@ -2946,11 +2946,11 @@ def main():
             return
         raw = message.text.replace("/shorten", "").replace("/сократи", "").strip()
         if not raw or not raw.startswith("http"):
-            bot.reply_to(message, "Напиши ссылку для сокращения: `/shorten https://very-long-url.com/...` 🔗🌸", parse_mode="Markdown")
+            safe_reply(message, "Напиши ссылку для сокращения: `/shorten https://very-long-url.com/...` 🔗🌸", parse_mode="Markdown")
             return
         short = shorten_tinyurl(raw)
         if short:
-            bot.reply_to(message, f"🔗 *Короткая ссылка:* {short} ✨", parse_mode="Markdown")
+            safe_reply(message, f"🔗 *Короткая ссылка:* {short} ✨", parse_mode="Markdown")
         else:
             bot.reply_to(message, "Ой... не удалось сократить ссылку 🥺")
 
@@ -2982,7 +2982,7 @@ def main():
         minutes = int(parts[0])
         label = parts[1] if len(parts) > 1 else "Время вышло!"
         schedule_reminder(bot, message.chat.id, f"@{PRIMARY_OWNER_USERNAME}", minutes, label, True)
-        bot.reply_to(message, f"⏱️ Таймер на *{minutes} мин.* запущен: «*{label}*»! Я обязательно напомню! 🌸", parse_mode="Markdown")
+        safe_reply(message, f"⏱️ Таймер на *{minutes} мин.* запущен: «*{label}*»! Я обязательно напомню! 🌸", parse_mode="Markdown")
 
     # 5. Romance & Cute Interactions
     @bot.message_handler(commands=["compatibility", "совместимость"])
@@ -3087,7 +3087,7 @@ def main():
             "7. Напиши «скажи голосом ...» — и я озвучу реплику! 🎙\n"
             "8. Поиграй со мной в `/tictactoe` или пройди свидание в `/quest`! 💖"
         )
-        bot.reply_to(message, card, parse_mode="Markdown")
+        safe_reply(message, card, parse_mode="Markdown")
 
     # 6. Callback Query Handler for Games & Quests
     @bot.callback_query_handler(func=lambda call: True)
