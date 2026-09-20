@@ -1,0 +1,10 @@
+__pycache__/
+*.zip
+*.log
+*.tmp
+*.mp3
+*.m4a
+tg_bot_token.txt
+.env
+id_ed25519*
+.ssh_known_hosts
